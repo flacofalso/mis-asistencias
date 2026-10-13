@@ -4,7 +4,9 @@
 // Cada campo: patrón de la etiqueta (sobre texto en minúsculas y sin tildes).
 // El valor es lo que hay entre la etiqueta y la siguiente etiqueta conocida.
 // Los patrones toleran errores típicos del OCR ("drección", "fut", "foro").
-const N = String.raw`n\s*(?:[°º"'*.o]|ro\.?|um\.?|umero)?\s*(?:de\s+)?`
+// El "°" sale de muchas formas ("N*", "NS", "Nº.", "N"): se acepta cualquier
+// símbolo corto pegado a la N.
+const N = String.raw`n(?:umero|ro\.?|um\.?|\S{0,2})\s*(?:de\s+)?`
 const VEH = String.raw`(?:v[a-z]{1,3}iculo\s+)?`
 const DIR = String.raw`d[a-z]{0,2}ecci?on\s+(?:de\s+)?`
 const PATRONES = [
@@ -34,7 +36,7 @@ const ETIQUETAS = PATRONES.map(([campo, p]) => [
 ])
 
 // Texto que marca el final de los datos de la solicitud.
-const FINALES = [/ocultar texto citado/g, /atentamente/g, /\n\s*\n/g]
+const FINALES = [/(?:ocultar|mostrar) texto citado/g, /atentamente/g, /\n\s*\n/g]
 
 const COMPANIAS = [
   'Zurich', 'HDI', 'BCI', 'Mapfre', 'Sura', 'Liberty', 'Chubb', 'Consorcio',
@@ -49,10 +51,17 @@ function normalizar(texto) {
   return out.toLowerCase()
 }
 
-// Corrige letras que el OCR confunde con números en campos numéricos.
+// Corrige letras que el OCR confunde con números en campos numéricos. Usa
+// solo las primeras palabras con dígitos: si el OCR no reconoció la etiqueta
+// siguiente, su texto ("Asistencia") no debe sumar dígitos falsos (s -> 5).
 function soloDigitos(valor) {
   const mapa = { O: '0', o: '0', D: '0', Q: '0', I: '1', l: '1', '|': '1', S: '5', s: '5', B: '8', Z: '2' }
-  return valor.replace(/[OoDQIl|SsBZ]/g, (c) => mapa[c]).replace(/\D/g, '')
+  const palabras = []
+  for (const p of valor.trim().split(/\s+/)) {
+    if (/\d/.test(p)) palabras.push(p)
+    else if (palabras.length) break
+  }
+  return palabras.join('').replace(/[OoDQIl|SsBZ]/g, (c) => mapa[c]).replace(/\D/g, '')
 }
 
 function limpiar(valor) {
@@ -159,7 +168,14 @@ export function parsearSolicitud(texto) {
     }
   }
 
-  const cobros = parsearCobros(texto)
+  // Los cobros se buscan fuera de los datos de la solicitud: si no, el código
+  // postal de una dirección ("8150215 Puente Alto") parece un cobro.
+  let resto = texto
+  encontrados.forEach((e, i) => {
+    const fin = encontrados[i + 1]?.inicio ?? Math.min(texto.length, ...cortes.filter((c) => c > e.finEtiqueta))
+    resto = resto.slice(0, e.inicio) + ' '.repeat(fin - e.inicio) + resto.slice(fin)
+  })
+  const cobros = parsearCobros(resto)
   if (cobros.length) datos.cobros = cobros
   if (/\bcustodia\b/.test(norm) && !datos.tipoDestino) datos.tipoDestino = 'Custodia'
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ESTADOS, mesDe, totalCobros } from '../lib/storage'
+import { CANALES, ESTADOS, canalDe, mesDe, totalCobros } from '../lib/storage'
 import { fecha, hora, moverMes, nombreMes, pesos } from '../lib/formato'
 import { compartirODescargar, generarExcel } from '../lib/excel'
 import { Boton } from './ui'
@@ -21,7 +21,7 @@ export default function Inicio({ asistencias, ajustes, mes, setMes, onNueva, onA
     const q = busqueda.trim().toLowerCase()
     if (!q) return delMes
     return delMes.filter((a) =>
-      [a.patente, a.expediente, a.nAsistencia, a.clienteNombre, a.marca, a.modelo, a.origen, a.destino, a.compania]
+      [a.patente, a.expediente, a.nAsistencia, a.clienteNombre, a.marca, a.modelo, a.origen, a.destino, a.compania, canalDe(a)]
         .join(' ')
         .toLowerCase()
         .includes(q),
@@ -134,6 +134,7 @@ export default function Inicio({ asistencias, ajustes, mes, setMes, onNueva, onA
                   <div className="min-w-0">
                     <p className="text-xs text-slate-500">
                       {fecha(a.fechaAsistencia)} · {hora(a.fechaAsistencia)}
+                      {' · '}{CANALES.find((c) => c.id === canalDe(a))?.texto}
                       {a.compania && ` · ${a.compania}`}
                     </p>
                     <p className="mt-0.5 font-bold text-slate-900">

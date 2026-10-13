@@ -54,12 +54,27 @@ export const MOTIVOS = [
   'Otro',
 ]
 
+// Quién envía la solicitud y paga el servicio: cada canal es un bloque
+// distinto en la planilla mensual del transportista.
+export const CANALES = [
+  { id: 'MOK', texto: 'MOK' },
+  { id: 'EURO', texto: 'Euro' },
+  { id: 'MACC', texto: 'MACC' },
+  { id: 'PARTICULAR', texto: 'Particular' },
+]
+
+export const FORMAS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta']
+
+// Las asistencias guardadas antes de existir el canal venían todas de MOK.
+export const canalDe = (a) => a.canal || 'MOK'
+
 export const TIPOS_DESTINO = ['Custodia', 'Taller', 'Domicilio', 'Concesionario', 'Otro']
 
 export function nuevaAsistencia() {
   return {
     id: crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2),
     creadoEn: new Date().toISOString(),
+    canal: 'MOK',
     compania: '',
     sponsor: '',
     plan: '',
@@ -82,6 +97,7 @@ export function nuevaAsistencia() {
     estado: 'pendiente',
     motivo: '',
     cobros: [],
+    formaPago: '',
     excedente: '',
     observaciones: '',
   }

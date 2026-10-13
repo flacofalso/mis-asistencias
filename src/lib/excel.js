@@ -1,4 +1,4 @@
-import { ESTADOS, totalCobros } from './storage.js'
+import { ESTADOS, canalDe, totalCobros } from './storage.js'
 import { duracion, fecha, hora, minutosEntre, nombreMes } from './formato.js'
 
 const COLOR_ENCABEZADO = 'FF1E293B'
@@ -21,6 +21,7 @@ export async function generarExcel(asistencias, ajustes, mes) {
   const { default: ExcelJS } = await import('exceljs')
   const libro = new ExcelJS.Workbook()
   libro.creator = ajustes.transportista || 'App Seguros'
+  libro.calcProperties.fullCalcOnLoad = true
 
   const lista = [...asistencias].sort((a, b) => (a.fechaAsistencia || '').localeCompare(b.fechaAsistencia || ''))
   const conceptos = conceptosDelMes(lista, ajustes.conceptos)
@@ -35,7 +36,9 @@ export async function generarExcel(asistencias, ajustes, mes) {
     ['Total', 13], ['Excedente', 12], ['Observaciones', 34],
   ]
 
-  const hoja = libro.addWorksheet('Asistencias', {
+  agregarPlanilla(libro, lista, ajustes, mes)
+
+  const hoja = libro.addWorksheet('Detalle', {
     views: [{ state: 'frozen', ySplit: 5 }],
     pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   })
@@ -140,6 +143,128 @@ export async function generarExcel(asistencias, ajustes, mes) {
   const buffer = await libro.xlsx.writeBuffer()
   const nombre = `Asistencias ${nombreMes(mes)}${ajustes.transportista ? ' - ' + ajustes.transportista : ''}.xlsx`
   return { buffer, nombre }
+}
+
+// "Juan de Dios Malebrán 3759, 8150215 Puente Alto, Región Metropolitana, Chile"
+// -> "PUENTE ALTO". En la planilla el transportista anota solo la comuna.
+export function comuna(direccion) {
+  if (!direccion) return ''
+  const conPostal = direccion.match(/\b\d{7}\s+([^,]+)/)
+  if (conPostal) return conPostal[1].trim().toUpperCase()
+  const partes = direccion
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => p && !/regi[oó]n|^chile$|^\d+$/i.test(p))
+  return (partes.length > 1 ? partes[partes.length - 1] : direccion.trim()).toUpperCase()
+}
+
+function observacion(a) {
+  const fallido = a.estado === 'no_completado' && (a.motivo && a.motivo !== 'Otro' ? `FALLIDO (${a.motivo})` : 'FALLIDO')
+  return [fallido, a.observaciones?.trim()].filter(Boolean).join(' · ')
+}
+
+// Un bloque por canal, uno al lado del otro, igual que la planilla que el
+// transportista armaba a mano (columnas A, K, T y AB; totales en AI:AJ).
+const BLOQUES = [
+  { canal: 'MOK', titulo: ['SEGUROS', 'MOK'], col: 1, campos: ['FECHA', 'EXPEDIENTE', 'ASISTENCIA', 'PATENTE', 'ORIGEN', 'DESTINO', 'PRECIO', 'OBSERVACIONES', 'APRESTAMOS'] },
+  { canal: 'EURO', titulo: ['SEGURO', 'EURO'], col: 11, campos: ['FECHA', 'EXPEDIENTE', 'ASISTENCIA', 'PATENTE', 'ORIGEN', 'DESTINO', 'VALOR', 'OBSERVACIÓN'] },
+  { canal: 'MACC', titulo: ['SEGURO', 'MACC'], col: 20, campos: ['FECHA', 'ASISTENCIA', 'PATENTE', 'ORIGEN', 'DESTINO', 'VALOR', 'OBSERVACIÓN'] },
+  { canal: 'PARTICULAR', titulo: ['PARTICULARES'], col: 28, campos: ['FECHA', 'ORIGEN', 'DESTINO', 'PRECIO', 'FORMA DE PAGO', 'OBSERVACIÓN'] },
+]
+const COL_RESUMEN = 35
+
+const VALORES = {
+  FECHA: (a) => {
+    if (!a.fechaAsistencia) return null
+    const [y, m, d] = a.fechaAsistencia.slice(0, 10).split('-').map(Number)
+    return new Date(Date.UTC(y, m - 1, d))
+  },
+  EXPEDIENTE: (a) => numeroOTexto(a.expediente),
+  ASISTENCIA: (a) => numeroOTexto(a.nAsistencia),
+  PATENTE: (a) => a.patente,
+  ORIGEN: (a) => comuna(a.origen),
+  DESTINO: (a) => comuna(a.destino),
+  PRECIO: totalCobros,
+  VALOR: totalCobros,
+  'FORMA DE PAGO': (a) => a.formaPago,
+  OBSERVACIONES: observacion,
+  OBSERVACIÓN: observacion,
+  // El transportista no la ha usado hasta ahora; queda disponible en blanco.
+  APRESTAMOS: () => null,
+}
+
+const ANCHOS = { FECHA: 11, EXPEDIENTE: 12, ASISTENCIA: 12, PATENTE: 10, ORIGEN: 18, DESTINO: 18, PRECIO: 11, VALOR: 11, 'FORMA DE PAGO': 15, APRESTAMOS: 14 }
+
+const numeroOTexto = (v) => (/^\d{1,15}$/.test(v || '') ? Number(v) : v || null)
+
+function agregarPlanilla(libro, lista, ajustes, mes) {
+  const hoja = libro.addWorksheet('Planilla', { views: [{ state: 'frozen', ySplit: 5 }] })
+  const negrita = { bold: true }
+
+  hoja.getCell(1, 1).value = 'NOMBRE'
+  hoja.getCell(1, 2).value = (ajustes.transportista || '').toUpperCase()
+  hoja.getCell(2, 1).value = 'MES'
+  hoja.getCell(2, 2).value = nombreMes(mes).split(' ')[0].toUpperCase()
+  hoja.getCell(1, 1).font = hoja.getCell(2, 1).font = negrita
+
+  const totales = []
+  for (const b of BLOQUES) {
+    const filas = lista.filter((a) => canalDe(a) === b.canal)
+    b.titulo.forEach((t, i) => {
+      hoja.getCell(4, b.col + i).value = t
+      hoja.getCell(4, b.col + i).font = negrita
+    })
+    b.campos.forEach((campo, i) => {
+      hoja.getColumn(b.col + i).width = ANCHOS[campo] ?? 32
+      const c = hoja.getCell(5, b.col + i)
+      c.value = campo
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_ENCABEZADO } }
+      c.alignment = { horizontal: 'center' }
+      bordeFino(c)
+    })
+
+    filas.forEach((a, n) => {
+      b.campos.forEach((campo, i) => {
+        const c = hoja.getCell(6 + n, b.col + i)
+        c.value = VALORES[campo](a)
+        if (campo === 'FECHA') c.numFmt = 'dd/mm/yy'
+        if (campo === 'PRECIO' || campo === 'VALOR') c.numFmt = FORMATO_PESOS
+        c.alignment = { vertical: 'top', horizontal: campo === 'FECHA' ? 'center' : undefined }
+        bordeFino(c)
+      })
+    })
+
+    // Fila de total del bloque, con fórmula para que siga cuadrando si editan.
+    const colPrecio = b.col + b.campos.findIndex((c) => c === 'PRECIO' || c === 'VALOR')
+    const filaTotal = 6 + filas.length
+    const letra = hoja.getColumn(colPrecio).letter
+    hoja.getCell(filaTotal, colPrecio - 1).value = 'TOTAL'
+    const total = hoja.getCell(filaTotal, colPrecio)
+    total.value = filas.length
+      ? { formula: `SUM(${letra}6:${letra}${filaTotal - 1})`, result: filas.reduce((s, a) => s + totalCobros(a), 0) }
+      : 0
+    total.numFmt = FORMATO_PESOS
+    hoja.getCell(filaTotal, colPrecio - 1).font = total.font = negrita
+    totales.push({ nombre: b.titulo[b.titulo.length - 1], celda: `${letra}${filaTotal}`, monto: filas.reduce((s, a) => s + totalCobros(a), 0) })
+  }
+
+  // Resumen de producción del mes
+  hoja.getColumn(COL_RESUMEN).width = 16
+  hoja.getColumn(COL_RESUMEN + 1).width = 14
+  totales.forEach((t, i) => {
+    hoja.getCell(4 + i, COL_RESUMEN).value = t.nombre
+    const c = hoja.getCell(4 + i, COL_RESUMEN + 1)
+    c.value = { formula: t.celda, result: t.monto }
+    c.numFmt = FORMATO_PESOS
+  })
+  const filaProd = 4 + totales.length
+  const letraRes = hoja.getColumn(COL_RESUMEN + 1).letter
+  hoja.getCell(filaProd, COL_RESUMEN).value = 'PRODUCCIÓN'
+  const prod = hoja.getCell(filaProd, COL_RESUMEN + 1)
+  prod.value = { formula: `SUM(${letraRes}4:${letraRes}${filaProd - 1})`, result: totales.reduce((s, t) => s + t.monto, 0) }
+  prod.numFmt = FORMATO_PESOS
+  hoja.getCell(filaProd, COL_RESUMEN).font = prod.font = negrita
 }
 
 function agregarResumen(libro, lista, conceptos, mes, ajustes) {

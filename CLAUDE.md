@@ -11,7 +11,7 @@ Responder siempre en español.
 ## Estado
 - v1 solo para el transportista (sin backend): datos en localStorage del teléfono, PWA instalable, respaldo JSON.
 - Primero se prueba con un transportista; después la idea es ofrecerla a la empresa (multiusuario, servidor).
-- Pendiente: conseguir el Excel real que usa el transportista y ajustar las columnas del export (`src/lib/excel.js`).
+- Excel real del transportista: bloques por canal uno al lado del otro (MOK, EURO, MACC, PARTICULARES), origen/destino solo comuna, totales por bloque y "PRODUCCIÓN". El export lo replica en la hoja "Planilla" (`src/lib/excel.js`); "Detalle" y "Resumen" son extras. Muestras reales en `muestras/` (ignorada en git: datos de clientes).
 - OCR desde foto (Tesseract) funciona bien con texto nítido; con capturas chicas del chat confunde dígitos. El parser (`src/lib/parser.js`) tolera errores típicos del OCR.
 
 ## Publicación

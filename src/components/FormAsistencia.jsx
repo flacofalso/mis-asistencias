@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ESTADOS, MOTIVOS, TIPOS_DESTINO, ahoraLocal, totalCobros } from '../lib/storage'
+import { CANALES, ESTADOS, FORMAS_PAGO, MOTIVOS, TIPOS_DESTINO, ahoraLocal, canalDe, totalCobros } from '../lib/storage'
 import { duracion, minutosEntre, pesos } from '../lib/formato'
 import Importar from './Importar'
 import { AreaTexto, Boton, Campo, Chip, Seccion } from './ui'
@@ -87,6 +87,16 @@ export default function FormAsistencia({ asistencia: a, nueva, ajustes, historia
         )}
 
         <Seccion titulo="Solicitud" icono="📄">
+          <div>
+            <span className="mb-1 block text-xs font-semibold text-slate-600">Canal</span>
+            <div className="flex flex-wrap gap-2">
+              {CANALES.map((c) => (
+                <Chip key={c.id} activo={canalDe(a) === c.id} onClick={() => set('canal')(c.id)}>
+                  {c.texto}
+                </Chip>
+              ))}
+            </div>
+          </div>
           <Campo etiqueta="Compañía de seguros" valor={a.compania} onChange={set('compania')} lista="companias" placeholder="Zurich" />
           <div className="grid grid-cols-2 gap-3">
             <Campo etiqueta="N° Expediente" valor={a.expediente} onChange={set('expediente')} inputMode="numeric" />
@@ -215,6 +225,18 @@ export default function FormAsistencia({ asistencia: a, nueva, ajustes, historia
             ))}
             <Chip onClick={() => agregarCobro()}>+ Otro</Chip>
           </div>
+          {canalDe(a) === 'PARTICULAR' && (
+            <div>
+              <span className="mb-1 block text-xs font-semibold text-slate-600">Forma de pago</span>
+              <div className="flex flex-wrap gap-2">
+                {FORMAS_PAGO.map((f) => (
+                  <Chip key={f} activo={a.formaPago === f} onClick={() => set('formaPago')(a.formaPago === f ? '' : f)}>
+                    {f}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          )}
           <Campo etiqueta="Excedente cobrado al cliente (si aplica)" tipo="number" valor={a.excedente} onChange={set('excedente')} inputMode="numeric" />
         </Seccion>
 

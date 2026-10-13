@@ -1,2 +1,5 @@
 node_modules
 dist
+
+# Archivos reales con datos de clientes (no subir)
+muestras/
