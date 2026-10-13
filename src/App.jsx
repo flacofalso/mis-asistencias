@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Inicio from './components/Inicio'
 import FormAsistencia from './components/FormAsistencia'
 import Ajustes from './components/Ajustes'
+import Ayuda from './components/Ayuda'
 import { AJUSTES_INICIALES, ahoraLocal, estaVacia, nuevaAsistencia, useGuardado } from './lib/storage'
 
 export default function App() {
@@ -48,6 +49,8 @@ export default function App() {
           onVolver={volver}
           onEliminar={() => eliminar(actual.id)}
         />
+      ) : vista.nombre === 'ayuda' ? (
+        <Ayuda onVolver={() => setVista({ nombre: 'inicio' })} />
       ) : vista.nombre === 'ajustes' ? (
         <Ajustes
           ajustes={ajustes}
@@ -65,6 +68,7 @@ export default function App() {
           onNueva={crear}
           onAbrir={(id) => setVista({ nombre: 'form', id })}
           onAjustes={() => setVista({ nombre: 'ajustes' })}
+          onAyuda={() => setVista({ nombre: 'ayuda' })}
         />
       )}
     </div>

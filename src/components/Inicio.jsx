@@ -4,7 +4,7 @@ import { fecha, hora, moverMes, nombreMes, pesos } from '../lib/formato'
 import { compartirODescargar, generarExcel } from '../lib/excel'
 import { Boton } from './ui'
 
-export default function Inicio({ asistencias, ajustes, mes, setMes, onNueva, onAbrir, onAjustes }) {
+export default function Inicio({ asistencias, ajustes, mes, setMes, onNueva, onAbrir, onAjustes, onAyuda }) {
   const [busqueda, setBusqueda] = useState('')
   const [exportando, setExportando] = useState(false)
   const [aviso, setAviso] = useState('')
@@ -60,9 +60,14 @@ export default function Inicio({ asistencias, ajustes, mes, setMes, onNueva, onA
             <p className="text-xs font-semibold uppercase tracking-widest text-amber-400">Mis asistencias</p>
             <h1 className="text-lg font-bold">{ajustes.transportista || 'Transportista'}</h1>
           </div>
-          <button onClick={onAjustes} className="rounded-full p-2 text-2xl active:bg-slate-700" aria-label="Ajustes">
-            ⚙️
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={onAyuda} className="rounded-full px-3 py-1.5 text-sm font-semibold text-amber-300 ring-1 ring-slate-700 active:bg-slate-700">
+              ¿Cómo funciona?
+            </button>
+            <button onClick={onAjustes} className="rounded-full p-2 text-2xl active:bg-slate-700" aria-label="Ajustes">
+              ⚙️
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-800 p-1">
