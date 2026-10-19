@@ -7,7 +7,12 @@ App para que el transportista (grúa) registre cada asistencia en el momento y g
 1. **Nueva asistencia**: sube la captura del correo de la solicitud (📷 *Desde foto*) o pega su texto. Los datos se completan solos (expediente, patente, cliente, origen/destino, km, compañía…). Revisa que estén correctos.
 2. Marca **llegada** y **término** con el botón *Ahora*.
 3. Elige el **resultado** (completado / no completado con su motivo) y agrega los **cobros** con los botones rápidos (Traslado, Rescate…). También se puede pegar el mensaje del dueño ("35.000 traslado, 50.000 rescate").
-4. A fin de mes: **Exportar Excel**. En el celular abre el menú para compartir (WhatsApp, correo).
+4. A fin de mes: **Exportar Excel**. En el celular abre el menú para compartir (WhatsApp, correo). El archivo trae tres hojas:
+   - **Planilla**: el mismo formato de la planilla mensual del transportista (bloques por canal MOK, EURO, MACC y PARTICULARES uno al lado del otro, origen/destino por comuna, totales por bloque y PRODUCCIÓN).
+   - **Detalle**: todas las asistencias con sus datos completos.
+   - **Resumen**: cantidades y montos del mes por estado, por compañía y por concepto de cobro.
+
+En la app, *¿Cómo funciona?* explica estos pasos y sus beneficios.
 
 Los datos se guardan solo en el teléfono. En *Ajustes* → *Respaldo* se puede descargar y restaurar una copia.
 
@@ -21,12 +26,14 @@ npm run dev      # muestra una URL "Network" para abrir desde el celular en la m
 npm run build    # genera la carpeta dist/ lista para publicar
 ```
 
-Para instalarla en el celular como app (y usar la cámara/compartir), hay que publicarla con HTTPS, por ejemplo subiendo `dist/` a Netlify o Vercel (gratis).
+## Publicación
+
+Se publica en GitHub Pages: cada `git push` a `main` la compila y despliega automáticamente (`.github/workflows/deploy.yml`). Desde ahí (HTTPS) se puede instalar en el celular como app.
 
 ## Estructura
 
 - `src/lib/parser.js` — lee el texto de la solicitud (correo de MultiServicios OK) y del mensaje de cobros
 - `src/lib/ocr.js` — lectura de texto desde foto (Tesseract, se carga solo al usarla)
-- `src/lib/excel.js` — genera el Excel mensual (hoja Asistencias + hoja Resumen)
+- `src/lib/excel.js` — genera el Excel mensual (hojas Planilla, Detalle y Resumen)
 - `src/lib/storage.js` — datos guardados en el teléfono, estados, motivos y tarifas
-- `src/components/` — pantallas: Inicio, FormAsistencia, Importar, Ajustes
+- `src/components/` — pantallas: Inicio, FormAsistencia, Importar, Ajustes, Ayuda (*¿Cómo funciona?*)
