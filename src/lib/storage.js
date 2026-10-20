@@ -28,6 +28,7 @@ export const AJUSTES_INICIALES = {
   rut: '',
   telefono: '',
   patenteGrua: '',
+  compartirDriveCon: '',
   empresa: '',
   conceptos: [
     { nombre: 'Traslado', monto: 35000 },

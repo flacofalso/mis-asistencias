@@ -1,13 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CANALES, ESTADOS, canalDe, mesDe, totalCobros } from '../lib/storage'
 import { fecha, hora, moverMes, nombreMes, pesos } from '../lib/formato'
 import { compartirODescargar, generarExcel } from '../lib/excel'
+import { cargarGoogle, driveDisponible, guardarEnDrive, obtenerToken } from '../lib/drive'
 import { Boton } from './ui'
 
 export default function Inicio({ asistencias, ajustes, mes, setMes, onNueva, onAbrir, onAjustes, onAyuda }) {
   const [busqueda, setBusqueda] = useState('')
   const [exportando, setExportando] = useState(false)
   const [aviso, setAviso] = useState('')
+  const [subiendo, setSubiendo] = useState(false)
+  const [enlace, setEnlace] = useState('')
+
+  // Carga Google de antemano: si se carga recién al tocar, el navegador puede bloquear la ventana de permiso.
+  useEffect(() => {
+    cargarGoogle().catch(() => {})
+  }, [])
 
   const delMes = useMemo(
     () =>
@@ -49,6 +57,23 @@ export default function Inicio({ asistencias, ajustes, mes, setMes, onNueva, onA
       setAviso('No se pudo generar el Excel: ' + e.message)
     } finally {
       setExportando(false)
+    }
+  }
+
+  const subirADrive = async () => {
+    setSubiendo(true)
+    setAviso('')
+    setEnlace('')
+    try {
+      const permiso = obtenerToken() // primero, para que la ventana de Google se abra con el toque
+      const { buffer, nombre } = await generarExcel(delMes, ajustes, mes)
+      await permiso
+      setEnlace(await guardarEnDrive(buffer, nombre, mes, ajustes.compartirDriveCon))
+      setAviso(`✓ Guardado en Google Drive, carpeta "Mis Asistencias".`)
+    } catch (e) {
+      setAviso('No se pudo guardar en Google Drive: ' + e.message)
+    } finally {
+      setSubiendo(false)
     }
   }
 
@@ -103,7 +128,21 @@ export default function Inicio({ asistencias, ajustes, mes, setMes, onNueva, onA
         <Boton variante="oscuro" className="w-full py-3" onClick={exportar} disabled={exportando || !delMes.length}>
           {exportando ? 'Generando…' : `📊 Exportar Excel de ${nombreMes(mes)}`}
         </Boton>
-        {aviso && <p className="rounded-xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">{aviso}</p>}
+        {driveDisponible && (
+          <Boton variante="secundario" className="w-full py-3" onClick={subirADrive} disabled={subiendo || !delMes.length}>
+            {subiendo ? 'Guardando en Drive…' : `☁️ Guardar ${nombreMes(mes)} en Google Drive`}
+          </Boton>
+        )}
+        {aviso && (
+          <p className="rounded-xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
+            {aviso}
+            {enlace && (
+              <a href={enlace} target="_blank" rel="noreferrer" className="mt-2 block font-semibold text-amber-600 underline">
+                Abrir la planilla
+              </a>
+            )}
+          </p>
+        )}
 
         {delMes.length > 0 && (
           <input

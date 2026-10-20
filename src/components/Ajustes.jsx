@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { descargar } from '../lib/excel'
+import { desconectarDrive, driveDisponible, estadoDrive } from '../lib/drive'
 import { Boton, Campo, Seccion } from './ui'
 
 export default function Ajustes({ ajustes, setAjustes, asistencias, setAsistencias, onVolver }) {
   const [aviso, setAviso] = useState('')
+  const [driveConectado, setDriveConectado] = useState(() => Boolean(estadoDrive().conectado))
   const archivo = useRef(null)
   const set = (campo) => (valor) => setAjustes((a) => ({ ...a, [campo]: valor }))
 
@@ -84,6 +86,34 @@ export default function Ajustes({ ajustes, setAjustes, asistencias, setAsistenci
             + Agregar concepto
           </Boton>
         </Seccion>
+
+        {driveDisponible && (
+          <Seccion titulo="Google Drive" icono="☁️">
+            <p className="text-sm text-slate-500">
+              En el inicio, “Guardar en Google Drive” deja la planilla del mes en tu Drive (carpeta “Mis Asistencias”), lista
+              para verla en el celular. Cada vez que la guardas se actualiza el mismo archivo.
+            </p>
+            <Campo
+              etiqueta="Compartir también con (correo, opcional)"
+              tipo="email"
+              valor={ajustes.compartirDriveCon}
+              onChange={set('compartirDriveCon')}
+              placeholder="nombre@gmail.com"
+            />
+            <p className="text-xs text-slate-400">Esa persona podrá ver (no modificar) las planillas de la carpeta.</p>
+            {driveConectado && (
+              <Boton
+                variante="secundario"
+                onClick={() => {
+                  desconectarDrive()
+                  setDriveConectado(false)
+                }}
+              >
+                Desconectar Google Drive
+              </Boton>
+            )}
+          </Seccion>
+        )}
 
         <Seccion titulo="Respaldo" icono="💾">
           <p className="text-sm text-slate-500">
